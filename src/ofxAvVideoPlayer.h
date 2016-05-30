@@ -145,7 +145,7 @@ public:
 	// by default resampling is taken care of automatically (set it with setupAudioOut())
 	// with this you can disable the sampling and force the file's native data format.
 	// set it before .load
-	bool forceNativeFormat;
+	bool forceNativeAudioFormat;
 	
 	/// \brief return a metadata item. available after load()
 	/// \return the string contents of the metadata item
@@ -158,6 +158,7 @@ public:
 	
 	// \brief returns the video texture
 	ofTexture &getTexture();
+	const ofPixels & getPixels();
 	int getFrameNumber();
 	double getFps(); 
 	string getFile();
@@ -166,13 +167,32 @@ public:
 	void update();
 	
 	string getInfo();
+
+    int getCurrentFrame();
+    int getTotalNumFrames();
+
+    void    firstFrame();
+    void    nextFrame();
+    void    previousFrame();
+
+    float   getHeight() const;
+    float   getWidth() const;
+
+    void    draw(float x, float y, float w, float h);
+    void    draw(float x, float y);
+
 	
 private:
 	long long duration;
 	float volume;
 	bool decode_next_frame();
+	bool decode_video_frame( int & got_frame );
+	bool decode_audio_frame( int & got_frame );
 	bool decode_until( double t, double & decoded_t );
 	bool queue_decoded_video_frame_vlocked();
+	bool queue_decoded_audio_frame_alocked();
+	bool copy_to_pixels_vlocked( ofxAvVideoData * data );
+	ofxAvVideoData * video_data_for_time_vlocked( double t );
 	
 	bool fileLoaded;
 	bool wantsUnload; 
@@ -206,7 +226,9 @@ private:
 	int output_sample_rate;
 	int64_t output_channel_layout;
 	int output_num_channels;
+	bool output_setup_called;
 	
+	bool requestedSeek; 
 	int64_t next_seekTarget;
 	
 	bool output_config_changed;
@@ -215,13 +237,16 @@ private:
 	int height;
 	
 	ofTexture texture;
+	int64_t texturePts;
 	
 	
 	mutex video_buffers_mutex;
+	// here we store the decoded buffers in native format.
+	// most of the time this is some funky yuv frame which is convert
+	// and pushed into the texture in update().
 	vector<ofxAvVideoData*> video_buffers;
-	int video_buffers_pos;
-	int video_buffers_read_pos;
-	int video_buffers_size;
+	int video_buffers_pos; // position where we write into the buffer
+	ofPixels video_pixels;
 	
 	mutex audio_queue_mutex;
 	queue<ofxAvAudioData*> audio_queue;
@@ -235,7 +260,8 @@ private:
 	
 	bool needsMoreVideo;
 	bool restart_loop;
-	string fileNameAbs; 
+	string fileNameAbs;
+	string fileNameBase; 
 };
 
 #endif
